@@ -1,0 +1,19 @@
+build:
+    stage: build
+    script:
+        - cmake -DPM2_5_BUILD_TESTS=1 -DPM2_5_BUILD_INST_CODE=1 -S . -B build
+        - cmake --build build
+    artifacts:
+        paths:
+            - build
+        expire_in: 1 day
+test:
+    stage: test
+    script:
+        - cd build
+        - make pm2_5-sensor-coverage
+    artifacts:
+        paths:
+            - build/coverage.json
+        expire_in: 1 day
+    coverage: '/Coverage: \d+\.\d+/'
