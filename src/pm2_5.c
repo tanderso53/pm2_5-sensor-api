@@ -186,11 +186,38 @@ int8_t pm2_5_get_data(pm2_5_dev *dev, pm2_5_data *data)
 		break;
 	}
 
-	/* Parse the received data into the given data object */
+	/* Parse the received data into the given data object. If
+	 * start bytes don't match, shift 1 byte, then try again */
 	rst = _parse_data(rsp, PM2_5_RX_DATA_LEN_BYTES, data);
 
 	if (rst != PM2_5_OK) {
-		return rst;
+		unsigned int tries = PM2_5_RX_DATA_LEN_BYTES * 2;
+		uint8_t shiftrsp[PM2_5_RX_DATA_LEN_BYTES];
+
+		/* Fill initallially with original response */
+		for (unsigned int i = 0; i < PM2_5_RX_DATA_LEN_BYTES; i++) {
+			shiftrsp[i] = rsp[i];
+		}
+
+		for (unsigned int i = 1; i < tries; i++) {
+			for (unsigned int j = 0; j < PM2_5_RX_DATA_LEN_BYTES - 1; j++) {
+				shiftrsp[j] = shiftrsp[j + 1];
+			}
+
+			rst = dev->receive_cb(&shiftrsp[PM2_5_RX_DATA_LEN_BYTES - 1],
+					      1, dev->intf_ptr);
+
+			if (rst != PM2_5_OK)
+				return rst;
+
+			rst = _parse_data(shiftrsp, PM2_5_RX_DATA_LEN_BYTES, data);
+
+			if (rst == PM2_5_OK) {
+				return PM2_5_OK;
+			}
+		}
+
+		return PM2_5_E_BAD_START_BYTES;
 	}
 
 	return PM2_5_OK;
