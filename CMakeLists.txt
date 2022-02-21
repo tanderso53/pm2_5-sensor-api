@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.18)
 
+project(pm2_5-sensor-driver)
+
 #########################################
 # API library for PMS 5003 PM2.5 Sensor #
 #########################################
@@ -25,6 +27,10 @@ if(DEFINED PM2_5_BUILD_TESTS)
 
   target_link_libraries(pm2_5-sensor-test PRIVATE
     pm2_5-sensor-api)
+
+  target_compile_options(pm2_5-sensor-test PRIVATE -Wall -g)
+
+  target_compile_options(pm2_5-sensor-api INTERFACE -Wall -g)
 
   add_test(NAME pm2_5-sensor-test-suite
     COMMAND $<TARGET_FILE:pm2_5-sensor-test>)
