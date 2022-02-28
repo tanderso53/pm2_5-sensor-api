@@ -47,6 +47,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+/**
+ * @defgroup pm2_5_error_helper PM2.5 Error Helpers
+ * @{
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* #ifdef __cplusplus */
@@ -176,5 +181,10 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif /* #ifdef __cplusplus */
+
+/**
+ * @}
+ * defgroup pm2_5_error_helper
+ */
 
 #endif /* #define PM2_5_PM2_5_ERROR_H */
