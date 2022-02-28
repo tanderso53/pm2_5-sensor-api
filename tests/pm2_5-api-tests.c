@@ -42,6 +42,9 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <time.h>
+#include <math.h>
 
 #define PM2_5_TEST_UNIT(name, func) do {			\
 		printf("Running tests for unit " #name ":\n");	\
@@ -88,6 +91,22 @@ static pm2_5_test_cb *test_library;
 /** @brief index for the next cb to add */
 static unsigned int pm2_5_test_index = 0;
 
+/** @brief Random seed for Pseudo Random numbers */
+static unsigned int pm2_5_test_rand_seed;
+
+/** @brief Data RX buffer */
+struct uart_buffer {
+	uint8_t *buf;
+	uint16_t len;
+	uint16_t index;
+};
+
+static struct uart_buffer rx_buffer = {
+	.buf = NULL,
+	.len = 0,
+	.index = 0
+};
+
 int8_t pm2_5_user_send_success(const uint8_t *data,
 			       uint8_t len, void *intf_ptr)
 {
@@ -125,6 +144,102 @@ int8_t pm2_5_user_receive_success(uint8_t *data,
 
 	data[len - 2] = (uint8_t) (sum >> 8);
 	data[len - 1] = (uint8_t) (sum & 0x00ff);
+
+	return 0;
+}
+
+uint8_t *init_uart_buffer(struct uart_buffer *ubuf, uint16_t offset)
+{
+	const uint16_t msg_len = PM2_5_RX_DATA_LEN_BYTES;
+	uint16_t len = msg_len + offset;
+	uint16_t sum = 0;
+
+
+	/* Allocate the buffer first */
+	ubuf->buf = (uint8_t*) malloc(len);
+
+	/* Return NULL if failed allocate */
+	if (!ubuf->buf) {
+		return NULL;
+	}
+
+	ubuf->len = len;
+	ubuf->index = 0;
+
+	/* If offset, supply some random bytes */
+	for (unsigned int i = 0; i < offset; i++) {
+		ubuf->buf[i] = (uint8_t) rand();
+	}
+
+	/* Start bytes and frame length */
+	ubuf->buf[offset + 0] = PM2_5_START_BYTE_1;
+	ubuf->buf[offset + 1] = PM2_5_START_BYTE_2;
+	ubuf->buf[offset + 2] = (uint8_t) (((msg_len - 4) >> 8) & 0x00ff);
+	ubuf->buf[offset + 3] = (uint8_t) ((msg_len - 4) & 0x00ff);
+
+	/* Add random ubuf->buf to ubuf->buf section */
+	for (uint16_t i = offset + 4; i < len - 2; i++) {
+		ubuf->buf[i] = (uint8_t) rand();
+	}
+
+	/* Compute the checksum and place in last two bytes */
+	for (uint8_t i = offset; i < len - 2; i++) {
+		sum += ubuf->buf[i];
+	}
+
+	ubuf->buf[len - 2] = (uint8_t) (sum >> 8);
+	ubuf->buf[len - 1] = (uint8_t) (sum & 0x00ff);
+
+	return ubuf->buf;
+}
+
+void deinit_rx_buffer(struct uart_buffer *ubuf)
+{
+	if (ubuf->buf) {
+		free(ubuf->buf);
+	}
+
+	ubuf->len = 0;
+	ubuf->index = 0;
+}
+
+uint8_t uart_buffer_get(struct uart_buffer *ubuf)
+{
+	uint8_t ret = ubuf->buf[ubuf->index];
+
+	++ubuf->index;
+
+	/* return index to beginning if out of bytes */
+	if (ubuf->index >= ubuf->len) {
+		ubuf->index = 0;
+	}
+
+	return ret;
+}
+	 
+int8_t pm2_5_user_receive_offset(uint8_t *data,
+				 uint8_t len, void *intf_ptr)
+{
+	if (!data) {
+		return -1;
+	}
+
+	/* If rx buffer not allocated, allocate it now */
+	if (rx_buffer.len == 0) {
+		unsigned int offset;
+
+		offset = 1 + rand() / ((RAND_MAX + 1u) /
+				       (2 * PM2_5_RX_DATA_LEN_BYTES));
+
+		if (!init_uart_buffer(&rx_buffer, offset)) {
+			return -1;
+		}
+	}
+
+	/* produce next bytes from the buffer */
+	for (uint8_t i = 0; i < len; i++) {
+		data[i] = uart_buffer_get(&rx_buffer);
+	}
 
 	return 0;
 }
@@ -342,9 +457,72 @@ int unit_pm2_5_sleep(int *testcnt, int *failcnt)
 	return *testcnt;
 }
 
+int unit_pm2_5_passive(int *testcnt, int *failcnt)
+{
+	pm2_5_dev dev_success;
+	pm2_5_dev dev_failure;
+	pm2_5_data data;
+
+	/* Test Success */
+	PM2_5_CONFIG_SUCCESS(dev_success);
+
+	pm2_5_init(&dev_success);
+
+	PM2_5_TEST_FN(pm2_5_set_mode_success,
+		      pm2_5_set_mode(&dev_success, PM2_5_MODE_PASSIVE),
+		      PM2_5_OK);
+
+	PM2_5_TEST_FN(pm2_5_get_data_passive_success,
+		      pm2_5_get_data(&dev_success, &data), PM2_5_OK);
+
+	/* Test Failure */
+	PM2_5_CONFIG_FAILURE(dev_failure);
+
+	pm2_5_init(&dev_failure);
+
+	PM2_5_TEST_FN(pm2_5_set_mode_failure,
+		      pm2_5_set_mode(&dev_failure, PM2_5_MODE_PASSIVE),
+		      PM2_5_E_COMM_FAILURE);
+
+	PM2_5_TEST_FN(pm2_5_get_data_passive_failure,
+		      pm2_5_get_data(&dev_failure, &data),
+		      PM2_5_E_COMM_FAILURE);
+
+	return *testcnt;
+}
+
+int unit_pm2_5_start_offset(int *testcnt, int *failcnt)
+{
+	pm2_5_dev dev_success;
+	pm2_5_data data;
+
+	/* Test Success */
+	PM2_5_CONFIG_SUCCESS(dev_success);
+
+	dev_success.receive_cb = pm2_5_user_receive_offset;
+
+	pm2_5_init(&dev_success);
+
+	PM2_5_TEST_FN(pm2_5_set_mode_passive,
+		      pm2_5_set_mode(&dev_success, PM2_5_MODE_PASSIVE),
+		      PM2_5_OK);
+
+	PM2_5_TEST_FN(pm2_5_get_data_with_offset,
+		      pm2_5_get_data(&dev_success, &data), PM2_5_OK);
+
+	deinit_rx_buffer(&rx_buffer);
+
+	return *testcnt;
+}
+
 int main() {
 	int testcnt = 0;
-	int failcnt = 0; 
+	int failcnt = 0;
+
+	/* set random seed */
+	pm2_5_test_rand_seed = time(NULL);
+
+	srand(pm2_5_test_rand_seed);
 
 	/* Initialize test library */
 	test_library = malloc(sizeof(pm2_5_test_cb) * 10);
@@ -360,6 +538,12 @@ int main() {
 
 	/* Run the sleep/wake unit */
 	PM2_5_TEST_UNIT(pm2_5_sleep, unit_pm2_5_sleep);
+
+	/* Run the Passive Mode test */
+	PM2_5_TEST_UNIT(pm2_5_set_mode_passive, unit_pm2_5_passive);
+
+	/* Run the Offset test */
+	PM2_5_TEST_UNIT(pm2_5_offsets, unit_pm2_5_start_offset);
 
 	/* Run the tests */
 	/* for (unsigned int i = 0; i < pm2_5_test_index; i++) { */
