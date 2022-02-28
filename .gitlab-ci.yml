@@ -20,6 +20,7 @@ test:
 pages:
     stage: deploy
     script:
+        - mkdir public
         - cp -R build/doc/html public/$CI_COMMIT_BRANCH
     artifacts:
         paths:
