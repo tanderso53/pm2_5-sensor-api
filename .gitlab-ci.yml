@@ -17,3 +17,10 @@ test:
             - build/coverage.json
         expire_in: 1 day
     coverage: '/Coverage: \d+\.\d+/'
+pages:
+    stage: deploy
+    script:
+        - cp -R build/doc/html public/$CI_COMMIT_BRANCH
+    artifacts:
+        paths:
+            - public
