@@ -44,15 +44,27 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-/* UART API errors, warnings and return codes */
-#define PM2_5_OK		 0
-#define PM2_5_E_NULL_PTR	-1
-#define PM2_5_E_COMM_FAILURE	-2
-#define PM2_5_E_BAD_CHECKSUM	-3
-#define PM2_5_E_ARRAY_LEN	-4
-#define PM2_5_E_BAD_CMD		-5
-#define PM2_5_E_BAD_START_BYTES	-6
-#define PM2_5_W_NO_DATA		 1
+/**
+ * @defgroup pm2_5_api PM2.5 Sensor API
+ * @{
+ */
+
+/**
+ * @defgroup pm2_5_error_defs UART API errors, warnings and return codes
+ * @{
+ */
+#define PM2_5_OK		 0 /**< @brief No error */
+#define PM2_5_E_NULL_PTR	-1 /**< @brief Pointer input was NULL */
+#define PM2_5_E_COMM_FAILURE	-2 /**< @brief Communication callback failure */
+#define PM2_5_E_BAD_CHECKSUM	-3 /**< @brief Data checksum did not match */
+#define PM2_5_E_ARRAY_LEN	-4 /**< @brief Invalid array length */
+#define PM2_5_E_BAD_CMD		-5 /**< @brief Did not match known commands */
+#define PM2_5_E_BAD_START_BYTES	-6 /**< @brief Message start bytes incorrect */
+#define PM2_5_W_NO_DATA		 1 /**< @brief No data returned */
+
+/**
+ * @}
+ */
 
 /* UART Communication definitions */
 #define PM2_5_DEFAULT_BAUD 9600
@@ -63,7 +75,16 @@
 #define PM2_5_MODE_ACTIVE 0x00
 #define PM2_5_MODE_PASSIVE 0x01
 
-/* Command transmissions */
+/**
+ * @defgroup pm2_5_internal_defines PM2.5 Internal Definitions
+ * @{
+ */
+
+/**
+ * @defgroup pm2_5_cmd_defs Command transmissions
+ * @{
+ */
+
 #define PM2_5_CMD_PASSIVE_READ 0xe2
 #define PM2_5_CMD_CHANGE_MODE 0xe1
 #define PM2_5_CMD_SET_SLEEP 0xe4
@@ -76,14 +97,30 @@
 
 #define PM2_5_CMD_LEN_BYTES 7
 
-/* Received data definitions */
+/**
+ * @}
+ */
+
+/**
+ * @defgroup pm2_5_data_defs Received data definitions
+ * @{
+ */
+
 #define PM2_5_START_BYTE_1 0x42
 #define PM2_5_START_BYTE_2 0x4d
 #define PM2_5_RX_DATA_LEN_BYTES 32
 #define PM2_5_RX_DATA_BIT_DEPTH 16
 #define PM2_5_RX_DATA_NUM_POINTS 13
 
-/* Data Positions */
+/**
+ * @}
+ */
+
+/**
+ * @defgroup pm2_5_pos_defs Data Positions
+ * @{
+ */
+
 #define PM2_5_POS_PM1_0_STD 0
 #define PM2_5_POS_PM2_5_STD 1
 #define PM2_5_POS_PM10_STD 2
@@ -97,6 +134,14 @@
 #define PM2_5_POS_NP_5_0 10
 #define PM2_5_POS_NP_10 11
 #define PM2_5_POS_NP_RES 12
+
+/**
+ * @}
+ */
+
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 extern "C" {
@@ -267,5 +312,9 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif /* #ifdef __cplusplus */
+
+/**
+ * @}
+ */
 
 #endif /* #ifndef PM2_5_H */

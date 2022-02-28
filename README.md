@@ -10,7 +10,7 @@ between an interfacing MCU, computer, or other such device.
 ## License ##
 
 PM2.5 Sensor API Library is written by Tyler Anderson and is released
-under a BSD 3-Clause license (see [LICENSE](LICENSE) file for more
+under a BSD 3-Clause license (see [LICENSE](./LICENSE) file for more
 details).
 
 ## Building ##
